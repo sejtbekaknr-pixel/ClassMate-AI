@@ -6,7 +6,7 @@ from http import cookies
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent
-DB=ROOT/'classmate.db'
+DB=Path(os.environ.get('CLASSMATE_DB_PATH', str(ROOT/'classmate.db')))
 TOKENS={}
 FAILED={}
 LOCK=threading.RLock()
