@@ -430,9 +430,9 @@ class Handler(core.Handler):
 
 def run():
     init_extra()
-    port=int(os.environ.get('CLASSMATE_PORT','8772'))
+    port=int(os.environ.get('PORT', '8772'))
     # loopback only by design. Internet exposure requires secure cloud infrastructure & audit.
-    server=ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    server=ThreadingHTTPServer(('0.0.0.0',port),Handler)
     print(f'ClassMate AI v3: http://127.0.0.1:{port}',flush=True)
     server.serve_forever()
 
