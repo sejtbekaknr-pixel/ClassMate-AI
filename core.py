@@ -82,36 +82,55 @@ def ollama_compose(kind, prompt, class_name):
         'report': ('Сынып жетекшісіне ресми емес есеп ЖОБАСЫН дайында. '
                    'Нақты дерек берілмесе, сан мен факт ойдан шығарма, бос орын немесе үлгі деп көрсет. Сұраныс: '+prompt),
     }
-    payload={
-        'model':OLLAMA_MODEL,
-        'stream':False,
-        'think':False,
-        'keep_alive':'20s',
-        'options':{'temperature':0.2,'repeat_penalty':1.18,'num_ctx':1536,'num_predict':540},
-        'messages':[
-            {'role':'system','content':(
-                'Сен ClassMate AI жүйесіндегі педагогке арналған мәтін көмекшісісің. '
-                'Тек сауатты қазақ тілінде жаз. Ағылшынша түсіндірме, ойлау процесі немесе өзіңнің жоспарың туралы пікір жазба. '
-                'Тікелей қолдануға болатын нақты мәтін бер. Шұбалаңқы сөз қайталама. '
-                'Оқушыға диагноз, жаза немесе қорытынды баға қойма. '
-                'Деректерді ойдан шығарма. Барлық нәтиже педагог тексеретін жоба болып табылады.')},
-            {'role':'user','content':'/no_think\n'+tasks[kind]}
-        ]
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Gemini API кілті орнатылмаған.")
+
+    url = ("https://generativelanguage.googleapis.com/v1beta/"
+           "models/gemini-2.5-flash-lite:generateContent")
+
+    prompt_text = (
+        "Сен ClassMate AI педагогикалық көмекшісісің. "
+        "Тек қазақ тілінде сауатты әрі түсінікті жауап бер. "
+        "Ойдан деректер құрастырма. "
+        "Мұғалім тексеретін дайын мәтін жобасын жаса.\n\n"
+        + tasks[kind]
+    )
+
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt_text}]
+        }],
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": 3000
+        }
     }
-    req=urllib.request.Request(OLLAMA_URL,data=json.dumps(payload,ensure_ascii=False).encode('utf-8'),headers={'Content-Type':'application/json'},method='POST')
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key
+        },
+        method="POST"
+    )
+
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            result=json.load(resp)
-    except (urllib.error.URLError,TimeoutError,ConnectionError) as exc:
-        raise RuntimeError('Ollama жауап бермеді. Ол компьютерде қосылып тұрғанын тексеріңіз.') from exc
-    answer=str(result.get('message',{}).get('content','')).strip()
-    # Ignore reasoning if any older model/version embeds it in content.
-    answer=re.sub(r'<think>.*?</think>','',answer,flags=re.S|re.I).strip()
-    if '<think>' in answer.lower():
-        answer=answer.split('</think>')[-1].strip() if '</think>' in answer.lower() else ''
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            result = json.load(resp)
+    except Exception as exc:
+        raise RuntimeError("Gemini жауабын алу мүмкін болмады.") from exc
+
+    parts = result["candidates"][0]["content"]["parts"]
+    answer = "".join(p.get("text", "") for p in parts).strip()
+
     if not answer:
-        raise RuntimeError('ЖИ дайын мәтін қайтармады. Кейін қайта көріңіз.')
-    return answer[:13000]
+        raise RuntimeError("Gemini бос жауап қайтарды.")
+
+    return answer[:12000]
+
 
 def classify(text):
  t=text.lower()
