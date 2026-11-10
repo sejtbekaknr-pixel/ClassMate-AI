@@ -1,0 +1,6 @@
+# Core ClassMate AI v3 server requires only Python 3.11+ standard library.
+# DO NOT run pip install for normal use.
+# Optional packages for extended imports/export (not needed for login, SQLite, Ollama, DOCX, HTML):
+# python-docx
+# openpyxl
+# reportlab
